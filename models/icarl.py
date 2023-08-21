@@ -40,12 +40,13 @@ class iCaRL(BaseLearner):
         self._known_classes = self._total_classes
         logging.info("Exemplar size: {}".format(self.exemplar_size))
 
+    # Algorithm 2: iCaRL INCREMENTAL TRAIN
     def incremental_train(self, data_manager):
         self._cur_task += 1
         self._total_classes = self._known_classes + data_manager.get_task_size(
             self._cur_task
         )
-        self._network.update_fc(self._total_classes)
+        self._network.update_fc(self._total_classes)    # 更新分类头，更新为现有类别的数量
         logging.info(
             "Learning on {}-{}".format(self._known_classes, self._total_classes)
         )
@@ -60,7 +61,9 @@ class iCaRL(BaseLearner):
             train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
         )
         test_dataset = data_manager.get_dataset(
-            np.arange(0, self._total_classes), source="test", mode="test"
+            np.arange(0, self._total_classes), 
+            source="test", 
+            mode="test"
         )
         self.test_loader = DataLoader(
             test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
@@ -69,7 +72,7 @@ class iCaRL(BaseLearner):
         if len(self._multiple_gpus) > 1:
             self._network = nn.DataParallel(self._network, self._multiple_gpus)
         self._train(self.train_loader, self.test_loader)
-        self.build_rehearsal_memory(data_manager, self.samples_per_class)
+        self.build_rehearsal_memory(data_manager, self.samples_per_class)       # samples_per_class: 按类别数量平均分配 memory
         if len(self._multiple_gpus) > 1:
             self._network = self._network.module
 
@@ -118,7 +121,7 @@ class iCaRL(BaseLearner):
                 losses += loss.item()
 
                 _, preds = torch.max(logits, dim=1)
-                correct += preds.eq(targets.expand_as(preds)).cpu().sum()
+                correct += preds.eq(targets.expand_as(preds)).cpu().sum()       # Top1
                 total += len(targets)
 
             scheduler.step()

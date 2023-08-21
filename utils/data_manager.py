@@ -198,7 +198,7 @@ class DataManager(object):
         self._common_trsf = idata.common_trsf
 
         # Order
-        order = [i for i in range(len(np.unique(self._train_targets)))]
+        order = [i for i in range(len(np.unique(self._train_targets)))]     # 类别的顺序
         if shuffle:
             np.random.seed(seed)
             order = np.random.permutation(len(order)).tolist()
@@ -211,7 +211,9 @@ class DataManager(object):
         self._train_targets = _map_new_class_index(
             self._train_targets, self._class_order
         )
-        self._test_targets = _map_new_class_index(self._test_targets, self._class_order)
+        self._test_targets = _map_new_class_index(
+            self._test_targets, self._class_order
+        )    
 
     def _select(self, x, y, low_range, high_range):
         idxes = np.where(np.logical_and(y >= low_range, y < high_range))[0]
@@ -262,7 +264,7 @@ class DummyDataset(Dataset):
 
         return idx, image, label
 
-
+# 
 def _map_new_class_index(y, order):
     return np.array(list(map(lambda x: order.index(x), y)))
 

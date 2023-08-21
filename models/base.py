@@ -86,7 +86,8 @@ class BaseLearner(object):
         cnn_accy = self._evaluate(y_pred, y_true)
 
         if hasattr(self, "_class_means"):
-            y_pred, y_true = self._eval_nme(self.test_loader, self._class_means)
+            y_pred, y_true = self._eval_nme(
+                self.test_loader, self._class_means)
             nme_accy = self._evaluate(y_pred, y_true)
         else:
             nme_accy = None
@@ -98,11 +99,14 @@ class BaseLearner(object):
             np.save(_pred_path, _pred)
             np.save(_target_path, y_true)
 
-            _save_dir = os.path.join(f"./results/conf_matrix/{self.args['prefix']}")
+            _save_dir = os.path.join(
+                f"./results/conf_matrix/{self.args['prefix']}")
             os.makedirs(_save_dir, exist_ok=True)
-            _save_path = os.path.join(_save_dir, f"{self.args['csv_name']}.csv")
+            _save_path = os.path.join(
+                _save_dir, f"{self.args['csv_name']}.csv")
             with open(_save_path, "a+") as f:
-                f.write(f"{self.args['time_str']},{self.args['model_name']},{_pred_path},{_target_path} \n")
+                f.write(
+                    f"{self.args['time_str']},{self.args['model_name']},{_pred_path},{_target_path} \n")
 
         return cnn_accy, nme_accy
 
@@ -140,9 +144,7 @@ class BaseLearner(object):
                 outputs = self._network(inputs)["logits"]
             predicts = torch.topk(
                 outputs, k=self.topk, dim=1, largest=True, sorted=True
-            )[
-                1
-            ]  # [bs, topk]
+            )[1]  # [bs, topk]
             y_pred.append(predicts.cpu().numpy())
             y_true.append(targets.cpu().numpy())
 
@@ -154,7 +156,8 @@ class BaseLearner(object):
         vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
 
         dists = cdist(class_means, vectors, "sqeuclidean")  # [nb_classes, N]
-        scores = dists.T  # [N, nb_classes], choose the one with the smallest distance
+        # [N, nb_classes], choose the one with the smallest distance
+        scores = dists.T
 
         return np.argsort(scores, axis=1)[:, : self.topk], y_true  # [N, topk]
 
@@ -165,7 +168,8 @@ class BaseLearner(object):
             _targets = _targets.numpy()
             if isinstance(self._network, nn.DataParallel):
                 _vectors = tensor2numpy(
-                    self._network.module.extract_vector(_inputs.to(self._device))
+                    self._network.module.extract_vector(
+                        _inputs.to(self._device))
                 )
             else:
                 _vectors = tensor2numpy(
@@ -207,12 +211,14 @@ class BaseLearner(object):
                 idx_dataset, batch_size=batch_size, shuffle=False, num_workers=4
             )
             vectors, _ = self._extract_vectors(idx_loader)
-            vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
+            vectors = (
+                vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
             mean = np.mean(vectors, axis=0)
             mean = mean / np.linalg.norm(mean)
 
             self._class_means[class_idx, :] = mean
 
+    # Algorithm 4: iCaRL CONSTRUCT EXEMPLARSET
     def _construct_exemplar(self, data_manager, m):
         logging.info("Constructing exemplars...({} per classes)".format(m))
         for class_idx in range(self._known_classes, self._total_classes):
@@ -225,8 +231,12 @@ class BaseLearner(object):
             idx_loader = DataLoader(
                 idx_dataset, batch_size=batch_size, shuffle=False, num_workers=4
             )
+            # 提取当前类别所有样本（测试集）的特征
             vectors, _ = self._extract_vectors(idx_loader)
-            vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
+            # 对特征做归一化（原文 2.Architecture）
+            vectors = (
+                vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
+            # current class mean
             class_mean = np.mean(vectors, axis=0)
 
             # Select
@@ -237,7 +247,8 @@ class BaseLearner(object):
                     exemplar_vectors, axis=0
                 )  # [feature_dim] sum of selected exemplars vectors
                 mu_p = (vectors + S) / k  # [n, feature_dim] sum to all vectors
-                i = np.argmin(np.sqrt(np.sum((class_mean - mu_p) ** 2, axis=1)))
+                i = np.argmin(
+                    np.sqrt(np.sum((class_mean - mu_p) ** 2, axis=1)))
                 selected_exemplars.append(
                     np.array(data[i])
                 )  # New object to avoid passing by inference
@@ -278,7 +289,8 @@ class BaseLearner(object):
                 idx_dataset, batch_size=batch_size, shuffle=False, num_workers=4
             )
             vectors, _ = self._extract_vectors(idx_loader)
-            vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
+            vectors = (
+                vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
             mean = np.mean(vectors, axis=0)
             mean = mean / np.linalg.norm(mean)
 
@@ -286,7 +298,8 @@ class BaseLearner(object):
 
     def _construct_exemplar_unified(self, data_manager, m):
         logging.info(
-            "Constructing exemplars for new classes...({} per classes)".format(m)
+            "Constructing exemplars for new classes...({} per classes)".format(
+                m)
         )
         _class_means = np.zeros((self._total_classes, self.feature_dim))
 
@@ -305,7 +318,8 @@ class BaseLearner(object):
                 class_dset, batch_size=batch_size, shuffle=False, num_workers=4
             )
             vectors, _ = self._extract_vectors(class_loader)
-            vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
+            vectors = (
+                vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
             mean = np.mean(vectors, axis=0)
             mean = mean / np.linalg.norm(mean)
 
@@ -324,7 +338,8 @@ class BaseLearner(object):
             )
 
             vectors, _ = self._extract_vectors(class_loader)
-            vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
+            vectors = (
+                vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
             class_mean = np.mean(vectors, axis=0)
 
             # Select
@@ -335,7 +350,8 @@ class BaseLearner(object):
                     exemplar_vectors, axis=0
                 )  # [feature_dim] sum of selected exemplars vectors
                 mu_p = (vectors + S) / k  # [n, feature_dim] sum to all vectors
-                i = np.argmin(np.sqrt(np.sum((class_mean - mu_p) ** 2, axis=1)))
+                i = np.argmin(
+                    np.sqrt(np.sum((class_mean - mu_p) ** 2, axis=1)))
 
                 selected_exemplars.append(
                     np.array(data[i])
@@ -375,7 +391,8 @@ class BaseLearner(object):
                 exemplar_dset, batch_size=batch_size, shuffle=False, num_workers=4
             )
             vectors, _ = self._extract_vectors(exemplar_loader)
-            vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
+            vectors = (
+                vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
             mean = np.mean(vectors, axis=0)
             mean = mean / np.linalg.norm(mean)
 
